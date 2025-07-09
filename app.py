@@ -1,134 +1,99 @@
 import streamlit as st
-import pandas as pd
-import io
 
+# -----------------------------------------------------------------------------
+# Page configuration
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Simple tools from Devcore",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-def main():
-    st.title("CSV Combiner & Column Editor")
-    st.write("Upload multiple CSV files to combine them and add/edit columns")
+# -----------------------------------------------------------------------------
+# Home page content
+# -----------------------------------------------------------------------------
+st.title("📊 Simple tools from Devcore")
+st.markdown("### Your one-stop solution for CSV file manipulation and analysis")
 
-    # File upload
-    uploaded_files = st.file_uploader(
-        "Choose CSV files",
-        accept_multiple_files=True,
-        type=['csv']
-    )
+st.divider()
 
-    if uploaded_files:
-        # If we haven't processed these files before, or if combined_df is missing, combine them
-        if 'combined_df' not in st.session_state:
-            dataframes = []
-            for file in uploaded_files:
-                try:
-                    df = pd.read_csv(file)
-                    dataframes.append(df)
-                    st.success(f"Loaded {file.name} with {len(df)} rows & {len(df.columns)} columns")
-                except Exception as e:
-                    st.error(f"Error reading {file.name}: {str(e)}")
+# Feature overview
+col1, col2 = st.columns(2)
 
-            if dataframes:
-                try:
-                    combined_df = pd.concat(dataframes, ignore_index=True)
-                    st.session_state.combined_df = combined_df.copy()
-                    st.success(f"Combined {len(dataframes)} files into {len(combined_df)} total rows")
-                except Exception as e:
-                    st.error(f"Error combining files: {str(e)}")
-                    return
-        else:
-            combined_df = st.session_state.combined_df
+with col1:
+    st.markdown("""
+    ## 🗂 CSV Combiner & Column Editor
+    
+    **Perfect for data consolidation and enhancement**
+    
+    ✅ **Combine multiple CSV files** into a single dataset  
+    ✅ **Add new columns** with custom default values  
+    ✅ **variable system** - Use `{column_name}` to reference other columns  
+    ✅ **Bulk value updates** - Set values for entire columns at once  
+    ✅ **Data preview** and column statistics  
+    ✅ **Download combined results** as CSV  
+    
+    **Example variable usage:**
+    - `mr. {firstname} {lastname}` → "mr. John Smith"
+    - `Order #{order_id} - {customer}` → "Order #12345 - Jane Doe"
+    """)
 
-        # Display current dataframe info
-        st.subheader("Current Dataset")
-        st.write(f"Shape: {combined_df.shape[0]} rows × {combined_df.shape[1]} columns")
+with col2:
+    st.markdown("""
+    ## 📊 CSV Row Comparison Tool
+    
+    **Find differences between datasets**
+    
+    ✅ **Compare two groups** of CSV files  
+    ✅ **Find missing rows** - Identify entries in Group B not present in Group A  
+    ✅ **Flexible column matching** - Compare any columns between groups  
+    ✅ **Summary statistics** - Match rates and totals  
+    ✅ **Export results** - Download missing rows as CSV  
+    
+    **Common use cases:**
+    - Find leads you haven't contacted yet
+    - Identify new entries in updated datasets  
+    - Compare inventory lists
+    - Audit data completeness
+    """)
 
-        # Column management section
-        st.subheader("Column Management")
+st.divider()
 
-        # Add new columns
-        with st.expander("Add New Columns"):
-            new_column_name = st.text_input("New column name")
-            new_column_default = st.text_input("Default value for new column (optional)")
+# Quick start guide
+st.markdown("""
+## 🚀 Quick Start Guide
 
-            if st.button("Add Column"):
-                if new_column_name:
-                    if new_column_name not in combined_df.columns:
-                        st.session_state.combined_df[new_column_name] = new_column_default
-                        st.success(f"Added column '{new_column_name}' with default value '{new_column_default}'")
-                    else:
-                        st.error("Column name already exists")
-                else:
-                    st.error("Please enter a column name")
+1. **Choose your tool** from the sidebar on the left
+2. **Upload your CSV files** using the file uploader
+3. **Follow the on-screen instructions** for each tool
+4. **Download your results** when ready
 
-        # Set values for all rows in any column
-        with st.expander("Set Values for All Rows"):
-            current_columns = list(combined_df.columns)
-            selected_column = st.selectbox("Select column to modify", current_columns)
-            new_value = st.text_input(
-                "New value for all rows in this column",
-                help="Use template syntax like 'mr. {firstname} {lastname}' to reference other columns"
-            )
+---
 
-            # Show available columns for template reference
-            st.write("Available columns for templates:", ", ".join(current_columns))
+### 💡 Tips for Best Results
 
-            if st.button("Set Value for All Rows"):
-                if selected_column and new_value is not None:
-                    # Template mode
-                    if '{' in new_value and '}' in new_value:
-                        try:
-                            formatted_values = []
-                            for _, row in combined_df.iterrows():
-                                template_dict = {col: ("" if pd.isna(row[col]) else str(row[col])) for col in current_columns}
-                                formatted_values.append(new_value.format(**template_dict))
-                            st.session_state.combined_df[selected_column] = formatted_values
-                            st.success(f"Applied template to column '{selected_column}'")
-                        except KeyError as e:
-                            st.error(f"Column '{e.args[0]}' not found in data")
-                        except Exception as e:
-                            st.error(f"Error applying template: {str(e)}")
-                    else:
-                        # Static value mode
-                        try:
-                            if new_value.replace('.', '').replace('-', '').isdigit():
-                                new_value = float(new_value) if '.' in new_value else int(new_value)
-                        except:
-                            pass
-                        st.session_state.combined_df[selected_column] = new_value
-                        st.success(f"Set all rows in column '{selected_column}' to '{new_value}'")
+- **File formats**: Only CSV files are supported
+- **Column names**: Make sure your CSV files have clear, consistent column headers
+- **File size**: For large files, processing may take a few moments
+- **Variables**: Use curly braces `{column_name}` to reference other columns in the combiner tool
+- **Encoding**: UTF-8 encoding is recommended for international characters
 
-        # Display the current dataframe
-        st.subheader("Preview of Combined Data")
-        st.write("First 10 rows:")
-        st.dataframe(st.session_state.combined_df.head(10))
+---
 
-        # Show data types
-        st.write("Column Data Types:")
-        col_info = pd.DataFrame({
-            'Column': combined_df.columns,
-            'Data Type': combined_df.dtypes.astype(str).values,
-            'Non-null Count': combined_df.count().values,
-            'Null Count': combined_df.isnull().sum().values
-        })
-        st.dataframe(col_info)
+### 🔧 Technical Details
 
-        # Download section
-        st.subheader("Download Combined Data")
-        csv_buffer = io.StringIO()
-        st.session_state.combined_df.to_csv(csv_buffer, index=False)
-        st.download_button(
-            label="Download Combined CSV",
-            data=csv_buffer.getvalue(),
-            file_name="combined_data.csv",
-            mime="text/csv"
-        )
+- Built with **Streamlit** for an interactive web interface
+- Uses **pandas** for efficient data processing
+- Supports **multiple file uploads** simultaneously
+- **Session state management** keeps your data between page switches
+- **Real-time preview** of your data transformations
 
-        # Show full dataframe (optional)
-        if st.checkbox("Show full dataframe"):
-            st.dataframe(st.session_state.combined_df)
+---
 
-    else:
-        st.info("Please upload one or more CSV files to get started")
+*Select a tool from the sidebar to get started!*
+""")
 
-
-if __name__ == "__main__":
-    main() 
+# Footer
+st.markdown("---")
+st.markdown("*CSV Tools Hub - Making data manipulation simple and efficient*") 
